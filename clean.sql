@@ -1,5 +1,8 @@
 START TRANSACTION;
 
+
+
+
 WITH candidate_rows AS (
     SELECT
         s.id, 
@@ -17,7 +20,7 @@ WITH candidate_rows AS (
         jsonb_array_elements(s.raw_json -> 'results') AS result_element
     WHERE
         jsonb_typeof(s.raw_json -> 'results') = 'array'
-), inserted_keys AS (
+), insert_attempt AS (
     INSERT INTO stock_daily_bars (
         ticker, bar_timestamp, volume, volume_weighted_average_price,
         open_price, close_price, high_price, low_price, transaction_count
@@ -28,14 +31,15 @@ WITH candidate_rows AS (
     FROM
         candidate_rows
     ON CONFLICT (ticker, bar_timestamp) DO NOTHING
-    RETURNING ticker, bar_timestamp
-), deleted_stock_ids AS (
-    SELECT DISTINCT cr.id
-    FROM candidate_rows cr
-    INNER JOIN stock_daily_bars sdb 
-        ON cr.ticker = sdb.ticker AND cr.bar_timestamp = sdb.bar_timestamp
 )
 DELETE FROM stocks s
-WHERE s.id IN (SELECT id FROM deleted_stock_ids);
+WHERE s.id IN (SELECT DISTINCT id FROM candidate_rows);
+
+
+
+
+
+
+
 
 COMMIT;
