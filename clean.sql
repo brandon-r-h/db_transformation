@@ -10,7 +10,8 @@ WITH candidate_rows AS (
         (result_element ->> 'h')::NUMERIC AS high_val,
         (result_element ->> 'l')::NUMERIC AS low_val,
         (result_element ->> 'c')::NUMERIC AS close_val,
-        (result_element ->> 'v')::BIGINT AS volume_val,
+        -- CORRECTED LINE: Cast 'v' to NUMERIC first, then to BIGINT
+        (result_element ->> 'v')::NUMERIC::BIGINT AS volume_val,
         (result_element ->> 'vw')::NUMERIC AS vwap_val,
         (result_element ->> 'n')::INTEGER AS trade_count_val
     FROM
@@ -31,8 +32,8 @@ INSERT INTO stock_aggregates_5min (
     low_price,
     close_price,
     volume,
-    vwap,         -- Matches the column name defined in CREATE TABLE
-    trade_count   -- Matches the column name defined in CREATE TABLE
+    vwap,
+    trade_count
 )
 SELECT
     ticker_symbol,
@@ -50,7 +51,6 @@ FROM
 ON CONFLICT (ticker, bar_timestamp) DO NOTHING;
 
 -- Delete the rows from the source 'stocks' table whose results were successfully processed
--- This uses the IDs collected in the CTE
 DELETE FROM stocks s
 WHERE s.id IN (SELECT DISTINCT id FROM candidate_rows);
 
